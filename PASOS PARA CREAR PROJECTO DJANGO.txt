@@ -10,3 +10,9 @@ pip install Django djangorestframework scikit-learn numpy pandas paramiko tensor
 python manage.py startapp api
 pip install mysqlclient
 python manage.py runserver
+
+python manage.py makemigrations   ----> Genera los archivos de migración basados en los cambios en los modelos.
+python manage.py migrate    ----> Aplica las migraciones a la base de datos, creando las tablas correspondientes.
+
+pip install tensorflow
+pip install keras-models

@@ -1,0 +1,88 @@
+A continuación, se detallan los endpoints disponibles en la API REST para el sistema de Iluminación Inteligente, organizados por su funcionalidad:
+
+1. Registros de Arduino (/api/registros/)
+Este ViewSet maneja las operaciones relacionadas con los datos de presencia estudiantil y el estado de los LEDs recopilados por el dispositivo Arduino.
+
+GET /api/registros/
+
+Descripción: Recupera una lista de todos los registros del Arduino almacenados en la base de datos.
+
+Parámetros de consulta (opcionales): Puedes usar parámetros estándar de Django REST Framework para filtrar, ordenar o paginar (ej., ?fecha=YYYY-MM-DD, ?total_estudiantes__gte=5).
+
+POST /api/registros/
+
+Descripción: Permite crear un nuevo registro de Arduino en la base de datos.
+
+Cuerpo de la solicitud (JSON): Espera un objeto JSON con los campos de RegistroArduino (ej., id_registro, timestamp, fecha, hora, hora_pc, evento, descripcion, total_estudiantes, led1_estado, led2_estado, led3_estado).
+
+GET /api/registros/<id>/
+
+Descripción: Recupera un registro específico del Arduino usando su id_registro.
+
+POST /api/registros/populate-from-json/
+
+Descripción: Endpoint especial para cargar los datos del archivo estructura_arduino.json a la base de datos. No necesita un cuerpo de solicitud, ya que lee el archivo configurado en el backend.
+
+Método: POST
+
+2. Rendimiento de Modelos ML (/api/ml-performance/)
+Este ViewSet permite ver las métricas de rendimiento de los diferentes modelos de Machine Learning y disparar su reentrenamiento.
+
+GET /api/ml-performance/
+
+Descripción: Muestra una lista de los registros de rendimiento de todos los modelos de Machine Learning que han sido entrenados. Incluye métricas como accuracy, f1_score, etc.
+
+POST /api/ml-performance/train_models/
+
+Descripción: Inicia el proceso de entrenamiento y evaluación de todos los modelos de Machine Learning configurados. Los modelos utilizan los datos de RegistroArduino de la base de datos para aprender. Una vez completado, el rendimiento de los modelos se actualiza en la base de datos, y el "mejor" modelo se guarda para su uso en predicciones.
+
+Método: POST
+
+3. Iluminación Inteligente (/api/iluminacion/)
+Este ViewSet maneja la lógica de predicción del estado de la iluminación y la consulta del estado actual.
+
+POST /api/iluminacion/predict_led_state/
+
+Descripción: Utiliza el modelo de Machine Learning entrenado (el "mejor" modelo) para predecir el estado (ON/OFF) de los LEDs basándose en el número de estudiantes proporcionado.
+
+Cuerpo de la solicitud (JSON):
+
+{
+    "total_estudiantes": 7
+}
+
+Respuesta (JSON):
+
+{
+    "total_estudiantes": 7,
+    "LED1": "ON",
+    "LED2": "OFF",
+    "LED3": "ON"
+}
+
+GET /api/iluminacion/get_current_lighting_status/
+
+Descripción: Recupera el estado de iluminación (LED1, LED2, LED3) y el total de estudiantes del último registro de Arduino en la base de datos.
+
+4. Integración ERP (/api/erp-integration/)
+Este ViewSet proporciona endpoints para interactuar con el sistema ERP ficticio a través de una conexión SSH segura.
+
+POST /api/erp-integration/send_data_to_erp/
+
+Descripción: Envía datos (opcionalmente, el último registro de Arduino si no se especifican datos) al sistema ERP ficticio a través de SSH. Requiere que la configuración SSH y la clave privada sean correctas.
+
+Cuerpo de la solicitud (JSON, opcional):
+
+{
+    "data_to_send": {
+        "ID": "custom_data",
+        "TOTAL": "12",
+        "MESSAGE": "Datos enviados desde la API"
+    }
+}
+
+Si data_to_send no se proporciona, intentará enviar el último RegistroArduino.
+
+GET /api/erp-integration/test_erp_connection/
+
+Descripción: Realiza una prueba de conexión SSH con el ERP para verificar que la configuración y la autenticación son correctas, sin enviar ningún dato.
