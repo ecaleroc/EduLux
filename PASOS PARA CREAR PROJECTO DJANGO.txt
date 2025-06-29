@@ -1,0 +1,12 @@
+PASOS PARA CREAR PROJECTO DJANGO
+
+en el cmd ubicarse ejemplo root y ejecutar:
+
+django-admin startproject EduLux
+cd EduLux
+python -m venv venv
+venv\Scripts\actívate
+pip install Django djangorestframework scikit-learn numpy pandas paramiko tensorflow keras
+python manage.py startapp api
+pip install mysqlclient
+python manage.py runserver
