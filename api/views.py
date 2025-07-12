@@ -10,7 +10,7 @@ from api.models import RegistroArduino, MLModelPerformance
 from api.serializers import RegistroArduinoSerializer, MLModelPerformanceSerializer, LEDPredictionSerializer, ERPIntegrationSerializer
 from api.data_loader import populate_db_from_json, preprocess_data, load_arduino_data
 from api.ml_models import MLTrainer, BEST_MODEL_FILENAME, MODEL_DIR
-from api.erp_integration import authenticate_and_connect_ssh # Importa la función SSH
+from api.erp_integration import authenticate_and_connect_ssh, check_ssh_server # Importa la función SSH
 import os
 import joblib # Para cargar el scaler de ML
 
@@ -137,10 +137,33 @@ class ERPIntegrationViewSet(viewsets.ViewSet):
             return Response(erp_response, status=status.HTTP_200_OK if erp_response.get("status") == "success" else status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    #@action(detail=False, methods=['get'])
+    #def test_erp_connection(self, request):
+    #    """
+    #    Endpoint para probar la conexión SSH con el ERP sin enviar datos.
+    #    """
+    #    erp_response = authenticate_and_connect_ssh(data_to_send=None)
+    #    return Response(erp_response, status=status.HTTP_200_OK if erp_response.get("status") == "success" else status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=False, methods=['get'])
     def test_erp_connection(self, request):
         """
         Endpoint para probar la conexión SSH con el ERP sin enviar datos.
         """
-        erp_response = authenticate_and_connect_ssh(data_to_send=None)
-        return Response(erp_response, status=status.HTTP_200_OK if erp_response.get("status") == "success" else status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if not check_ssh_server():
+            return Response(
+                {"status": "error", "message": "Servidor SSH no accesible en el puerto configurado"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+        try:
+            erp_response = authenticate_and_connect_ssh(data_to_send=None)
+            return Response(
+                erp_response,
+                status=status.HTTP_200_OK if erp_response.get("status") == "success" else status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except Exception as e:
+            return Response(
+                {"status": "error", "message": f"Error inesperado: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

@@ -13,7 +13,7 @@ class RegistroArduino(models.Model):
     provenientes del dispositivo Arduino (simulado por el JSON).
     """
     id_registro = models.CharField(max_length=100, unique=True, help_text="ID único del registro en el Arduino.")
-    timestamp = models.BigIntegerField(help_text="Marca de tiempo UNIX del registro.")
+    timestamp = models.DateTimeField(help_text="Fecha y hora exacta del evento.")
     fecha = models.DateField(help_text="Fecha del evento.")
     hora = models.TimeField(help_text="Hora del evento (formato Arduino).")
     hora_pc = models.TimeField(help_text="Hora del evento según el PC.")
