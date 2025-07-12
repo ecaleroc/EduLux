@@ -13,6 +13,7 @@ from api.ml_models import MLTrainer, BEST_MODEL_FILENAME, MODEL_DIR
 from api.erp_integration import authenticate_and_connect_ssh, check_ssh_server # Importa la función SSH
 import os
 import joblib # Para cargar el scaler de ML
+import pandas as pd # Importar pandas al inicio del archivo
 
 # Inicializar el entrenador de ML. Se podría hacer en un Singleton o global para persistencia.
 # Para este ejemplo, lo inicializamos una vez al cargar el módulo.
@@ -49,19 +50,46 @@ class MLModelPerformanceViewSet(viewsets.ReadOnlyModelViewSet):
     def train_models(self, request):
         """
         Endpoint para iniciar el entrenamiento y evaluación de los modelos ML.
-        Obtiene los datos de la base de datos de RegistroArduino.
+        Obtiene los datos directamente de la base de datos de RegistroArduino.
         """
         try:
-            # Cargar datos desde la base de datos para entrenamiento
-            # Opcional: cargar desde el JSON si la DB no tiene todo actualizado
-            df = preprocess_data(load_arduino_data())
+            # Cargar datos directamente desde la base de datos de Django
+            # Convertir el QuerySet a una lista de diccionarios y luego a DataFrame
+            # Asegúrate de que los nombres de las columnas coincidan con lo que espera ml_models.py
+            # 'total_estudiantes', 'led1_estado', 'led2_estado', 'led3_estado'
+            arduino_records = RegistroArduino.objects.all().values(
+                'total_estudiantes', 'led1_estado', 'led2_estado', 'led3_estado'
+            )
+            df = pd.DataFrame(list(arduino_records))
+
+            # --- DEBUGGING PRINTS ---
+            print("DataFrame columns:", df.columns)
+            print("DataFrame head:\n", df.head())
+            # --- END DEBUGGING PRINTS ---
+
             if df.empty:
-                return Response({"error": "No hay datos disponibles para entrenar los modelos."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "No hay datos disponibles en la base de datos para entrenar los modelos."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validar que las columnas esenciales existan antes de usarlas
+            required_columns = ['total_estudiantes', 'led1_estado', 'led2_estado', 'led3_estado']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                return Response(
+                    {"error": f"Faltan columnas esenciales en los datos de la base de datos para el entrenamiento: {', '.join(missing_columns)}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Convertir los estados de LED de 'ON'/'OFF' a 1/0 para el entrenamiento de ML
+            df['LED1_NUM'] = df['led1_estado'].apply(lambda x: 1 if x == 'ON' else 0)
+            df['LED2_NUM'] = df['led2_estado'].apply(lambda x: 1 if x == 'ON' else 0)
+            df['LED3_NUM'] = df['led3_estado'].apply(lambda x: 1 if x == 'ON' else 0)
 
             ml_trainer.train_and_evaluate_models(df)
             ml_trainer.save_best_model() # Guarda el mejor modelo después de entrenar
             return Response({"status": "Modelos entrenados y evaluados correctamente. Rendimiento actualizado."}, status=status.HTTP_200_OK)
         except Exception as e:
+            # Captura cualquier otra excepción no manejada y la devuelve como un error 500
+            print(f"Error inesperado al entrenar modelos: {str(e)}")
             return Response({"error": f"Error al entrenar modelos: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class IluminacionInteligenteViewSet(viewsets.ViewSet):

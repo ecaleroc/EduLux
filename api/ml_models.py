@@ -50,8 +50,15 @@ class MLTrainer:
             print("DataFrame vacío, no se pueden entrenar modelos.")
             return
 
+        # Preprocesamiento de los estados de LED a numérico si no se hizo al cargar
+        if 'led1_estado' in df.columns and 'LED1_NUM' not in df.columns:
+            df['LED1_NUM'] = df['led1_estado'].apply(lambda x: 1 if x == 'ON' else 0)
+            df['LED2_NUM'] = df['led2_estado'].apply(lambda x: 1 if x == 'ON' else 0)
+            df['LED3_NUM'] = df['led3_estado'].apply(lambda x: 1 if x == 'ON' else 0)
+
+
         # Características (TOTAL de estudiantes)
-        X = df[['TOTAL']]
+        X = df[['total_estudiantes']] # Usar 'total_estudiantes' del modelo Django
         # Objetivos (estado de cada LED)
         y_led1 = df['LED1_NUM']
         y_led2 = df['LED2_NUM']
@@ -60,6 +67,7 @@ class MLTrainer:
         # Escala las características (importante para algunos modelos como SVM, ANN)
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
+        self.models['scaler'] = scaler # Guardar el scaler para usarlo en la predicción
 
         # Dividir datos para entrenamiento y prueba (para modelos supervisados)
         X_train, X_test, y_train_led1, y_test_led1 = train_test_split(X_scaled, y_led1, test_size=0.3, random_state=42)
